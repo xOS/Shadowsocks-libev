@@ -226,9 +226,7 @@ Write_config(){
     "password": "${password}",
     "method": "${cipher}",
     "fast_open": ${tfo},
-    "mode": "tcp_and_udp",
-    "local_address":"127.0.0.1",
-    "local_port":1080
+    "mode": "tcp_and_udp"
 }
 EOF
 }
