@@ -5,12 +5,12 @@ export PATH
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev
-#	Version: 1.0.0
+#	Version: 1.0.1
 #	Author: 佩佩
 #	WebSite: http://nan.ge
 #=================================================
 
-sh_ver="1.0.0"
+sh_ver="1.0.1"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -57,7 +57,7 @@ install_libsodium() {
     if [ ! -f /usr/lib/libsodium.a ]; then
         cd "${cur_dir}" || exit
         tar zxf ${libsodium_file}.tar.gz
-		sleep 2s
+	sleep 3s
         cd ${libsodium_file} || exit
         ./configure --prefix=/usr && make && make install
         if [ $? -ne 0 ]; then
@@ -73,7 +73,7 @@ install_mbedtls() {
     if [ ! -f /usr/lib/libmbedtls.a ]; then
         cd "${cur_dir}" || exit
         tar xf "${mbedtls_file}"-apache.tgz
-		sleep 2s
+	sleep 3s
         cd "${mbedtls_file}" || exit
         make SHARED=1 CFLAGS=-fPIC
         make DESTDIR=/usr install
@@ -177,8 +177,8 @@ Pre_install(){
     install_mbedtls
     ldconfig
     cd "${cur_dir}" || exit
-	sleep 2s
     tar zxf "${shadowsocks_libev_ver}".tar.gz
+    sleep 2s
     cd "${shadowsocks_libev_ver}" || exit
     ./configure --disable-documentation
     make && make install
