@@ -182,7 +182,7 @@ Pre_install(){
     cd "${shadowsocks_libev_ver}" || exit
     ./configure --disable-documentation
     make && make install
-	echo "${new_ver}" > ${Now_ver_File}
+    echo "${new_ver}" > ${Now_ver_File}
     echo -e "${Info} Shadowsocks-libev 主程序编译安装完毕！"
     rm -rf "${shadowsocks_libev_ver}" "${shadowsocks_libev_ver}".tar.gz
     rm -rf ${libsodium_file} ${libsodium_file}.tar.gz
@@ -562,7 +562,7 @@ Status(){
 	echo -e "${Info} 获取 Shadowsocks 活动日志 ……"
 	echo -e "${Tip} 返回主菜单请按 q ！"
 	systemctl status shadowsocks-libev
-	Start_Menu
+	# Start_Menu
 }
 
 Update_Shell(){
