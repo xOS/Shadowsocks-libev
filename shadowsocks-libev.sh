@@ -184,6 +184,7 @@ Pre_install(){
     make && make install
     echo "${new_ver}" > ${Now_ver_File}
     echo -e "${Info} Shadowsocks-libev 主程序编译安装完毕！"
+    cd "${cur_dir}" || exit
     rm -rf "${shadowsocks_libev_ver}" "${shadowsocks_libev_ver}".tar.gz
     rm -rf ${libsodium_file} ${libsodium_file}.tar.gz
     rm -rf "${mbedtls_file}" "${mbedtls_file}"-apache.tgz
