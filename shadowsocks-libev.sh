@@ -4,7 +4,7 @@ export PATH
 
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
-#	Description: Shadowsocks Rust
+#	Description: Shadowsocks libev
 #	Version: 1.0.0
 #	Author: 佩佩
 #	WebSite: http://nan.ge
