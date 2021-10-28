@@ -5,12 +5,12 @@ export PATH
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev
-#	Version: 1.0.2
+#	Version: 1.0.4
 #	Author: 佩佩
 #	WebSite: http://nan.ge
 #=================================================
 
-sh_ver="1.0.2"
+sh_ver="1.0.4"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -47,7 +47,7 @@ download() {
 }
 
 download_files(){
-    cd "${cur_dir}" || exit
+    cd /root || exit
     download "${shadowsocks_libev_ver}.tar.gz" "${download_link}"
     download "${libsodium_file}.tar.gz" "${libsodium_url}"
     download "${mbedtls_file}-apache.tgz" "${mbedtls_url}"
@@ -55,8 +55,8 @@ download_files(){
 
 install_libsodium() {
     if [ ! -f /usr/lib/libsodium.a ]; then
-        cd "${cur_dir}" || exit
-        tar zxf ${libsodium_file}.tar.gz
+        cd /root || exit
+        tar -xzf ${libsodium_file}.tar.gz
 	sleep 3s
         cd ${libsodium_file} || exit
         ./configure --prefix=/usr && make && make install
@@ -71,8 +71,8 @@ install_libsodium() {
 
 install_mbedtls() {
     if [ ! -f /usr/lib/libmbedtls.a ]; then
-        cd "${cur_dir}" || exit
-        tar xf "${mbedtls_file}"-apache.tgz
+        cd /root || exit
+        tar -xzf "${mbedtls_file}"-apache.tgz
 	sleep 3s
         cd "${mbedtls_file}" || exit
         make SHARED=1 CFLAGS=-fPIC
@@ -176,15 +176,15 @@ Pre_install(){
     install_libsodium
     install_mbedtls
     ldconfig
-    cd "${cur_dir}" || exit
-    tar zxf "${shadowsocks_libev_ver}".tar.gz
+    cd /root || exit
+    tar -xzf "${shadowsocks_libev_ver}".tar.gz
     sleep 2s
     cd "${shadowsocks_libev_ver}" || exit
     ./configure --disable-documentation
     make && make install
     echo "${new_ver}" > ${Now_ver_File}
     echo -e "${Info} Shadowsocks-libev 主程序编译安装完毕！"
-    cd "${cur_dir}" || exit
+    cd /root || exit
     rm -rf "${shadowsocks_libev_ver}" "${shadowsocks_libev_ver}".tar.gz
     rm -rf ${libsodium_file} ${libsodium_file}.tar.gz
     rm -rf "${mbedtls_file}" "${mbedtls_file}"-apache.tgz
