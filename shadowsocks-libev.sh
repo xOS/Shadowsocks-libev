@@ -5,12 +5,12 @@ export PATH
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev
-#	Version: 1.0.1
+#	Version: 1.0.2
 #	Author: 佩佩
 #	WebSite: http://nan.ge
 #=================================================
 
-sh_ver="1.0.1"
+sh_ver="1.0.2"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -222,12 +222,15 @@ Installation_dependency(){
 Write_config(){
 	cat > ${CONF}<<-EOF
 {
-    "server": ["::1", "127.0.0.1"],
+    "server": ["0.0.0.0", "::1"],
     "server_port": ${port},
     "password": "${password}",
     "method": "${cipher}",
     "fast_open": ${tfo},
-    "mode": "tcp_and_udp"
+    "mode": "tcp_and_udp",
+    "user": "nobody",
+    "timeout": 300,
+    "nameserver": "8.8.8.8"
 }
 EOF
 }
