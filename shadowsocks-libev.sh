@@ -5,12 +5,12 @@ export PATH
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev
-#	Version: 1.0.4
+#	Version: 1.0.5
 #	Author: 佩佩
 #	WebSite: http://nan.ge
 #=================================================
 
-sh_ver="1.0.4"
+sh_ver="1.0.5"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -29,35 +29,10 @@ Info="${Green_font_prefix}[信息]${Font_color_suffix}"
 Error="${Red_font_prefix}[错误]${Font_color_suffix}"
 Tip="${Yellow_font_prefix}[注意]${Font_color_suffix}"
 
-download() {
-    local filename=${1}
-    local cur_dir=$(pwd)
-    if [ -s "${filename}" ]; then
-        echo -e "${Info} ${filename} [found]"
-    else
-        echo -e "${Info} ${filename} 不存在，下载开始下载..."
-        wget --no-check-certificate -cq -t3 -T60 -O "${1}" "${2}"
-        if [ $? -eq 0 ]; then
-            echo -e "${Info} ${filename} 下载完成！"
-        else
-            echo -e "${Error} ${filename} 下载失败， 请把它下载到目录 ${cur_dir} 再试！"
-            exit 1
-        fi
-    fi
-}
-
-download_files(){
-    cd /root || exit
-    download "${shadowsocks_libev_ver}.tar.gz" "${download_link}"
-    download "${libsodium_file}.tar.gz" "${libsodium_url}"
-    download "${mbedtls_file}-apache.tgz" "${mbedtls_url}"
-}
-
 install_libsodium() {
     if [ ! -f /usr/lib/libsodium.a ]; then
-        cd /root || exit
+		wget --no-check-certificate -cq -t3 -T60 -O "${libsodium_file}.tar.gz" "${libsodium_url}"
         tar -xzf ${libsodium_file}.tar.gz
-	sleep 3s
         cd ${libsodium_file} || exit
         ./configure --prefix=/usr && make && make install
         if [ $? -ne 0 ]; then
@@ -71,9 +46,8 @@ install_libsodium() {
 
 install_mbedtls() {
     if [ ! -f /usr/lib/libmbedtls.a ]; then
-        cd /root || exit
+		wget --no-check-certificate -cq -t3 -T60 -O "${mbedtls_file}-apache.tgz" "${mbedtls_url}"
         tar -xzf "${mbedtls_file}"-apache.tgz
-	sleep 3s
         cd "${mbedtls_file}" || exit
         make SHARED=1 CFLAGS=-fPIC
         make DESTDIR=/usr install
@@ -172,13 +146,11 @@ Pre_install(){
 		[[ -e "${FILE}" ]] && rm -rf "${FILE}"
 	fi
 	echo -e "${Info} 开始编译安装 Shadowsocks-libev……"
-	download_files
     install_libsodium
     install_mbedtls
     ldconfig
-    cd /root || exit
+	wget --no-check-certificate -cq -t3 -T60 -O "${shadowsocks_libev_ver}.tar.gz" "${download_link}"
     tar -xzf "${shadowsocks_libev_ver}".tar.gz
-    sleep 2s
     cd "${shadowsocks_libev_ver}" || exit
     ./configure --disable-documentation
     make && make install
@@ -212,9 +184,9 @@ systemctl enable --now shadowsocks-libev
 
 Installation_dependency(){
 	if [[ ${release} == "centos" ]]; then
-		yum update && yum install epel-release -y && yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip -y
+		yum update && yum install epel-release -y && yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 -y
 	else
-		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip -y
+		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 -y
 	fi
 	\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 }
