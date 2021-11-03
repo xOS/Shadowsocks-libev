@@ -5,12 +5,12 @@ export PATH
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev
-#	Version: 1.0.5
+#	Version: 1.0.6
 #	Author: 佩佩
 #	WebSite: http://nan.ge
 #=================================================
 
-sh_ver="1.0.5"
+sh_ver="1.0.6"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -186,7 +186,7 @@ Installation_dependency(){
 	if [[ ${release} == "centos" ]]; then
 		yum update && yum install epel-release -y && yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 c-ares-devel -y
 	else
-		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev -y
+		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev libev-dev -y
 	fi
 	\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 }
