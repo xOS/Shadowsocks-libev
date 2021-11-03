@@ -184,9 +184,9 @@ systemctl enable --now shadowsocks-libev
 
 Installation_dependency(){
 	if [[ ${release} == "centos" ]]; then
-		yum update && yum install epel-release -y && yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 -y
+		yum update && yum install epel-release -y && yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 c-ares-devel -y
 	else
-		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 -y
+		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev -y
 	fi
 	\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 }
