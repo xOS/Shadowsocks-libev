@@ -87,7 +87,7 @@ check_installed_status(){
 }
 
 check_pid(){
-	PID=$(ps -ef| grep "ss-server"| grep -v "grep" |grep -v "service" |awk '{print $2}')
+	PID=$(ps -ef| grep "ss-server"|awk '{print $2}')
 }
 
 get_latest_version(){
