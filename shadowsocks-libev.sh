@@ -9,7 +9,7 @@ export PATH
 #	WebSite: http://nan.ge
 #=================================================
 
-sh_ver="1.0.7"
+sh_ver="1.0.8"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -187,6 +187,7 @@ Installation_dependency(){
 		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev libev-dev rng-tools -y
 	fi
 	HRNGDEVICE=/dev/urandom
+	rngd -r /dev/urandom
 	\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 }
 
