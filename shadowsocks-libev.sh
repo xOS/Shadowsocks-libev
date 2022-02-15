@@ -6,10 +6,10 @@ export PATH
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev
 #	Author: 佩佩
-#	WebSite: http://nan.ge
+#	WebSite: https://www.nange.cn
 #=================================================
 
-sh_ver="1.0.8"
+sh_ver="1.0.9"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -82,11 +82,11 @@ check_sys(){
 }
 
 check_installed_status(){
-	[[ ! -e ${FILE} ]] && echo -e "${Error} Shadowsocks 没有安装，请检查 !" && exit 1
+	[[ ! -e ${FILE} ]] && echo -e "${Error} Shadowsocks-libev 没有安装，请检查 !" && exit 1
 }
 
-check_pid(){
-	PID=$(ps -ef| grep "ss-server"|awk '{print $2}')
+check_status(){
+	status=`systemctl status shadowsocks-libev | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1`
 }
 
 get_latest_version(){
@@ -96,37 +96,37 @@ get_latest_version(){
     download_link="https://github.com/shadowsocks/shadowsocks-libev/releases/download/${ver}/${shadowsocks_libev_ver}.tar.gz"
 }
 
-check_version(){
-    check_installed "ss-server"
-    if [ $? -eq 0 ]; then
-        installed_ver=$(ss-server -h | grep shadowsocks-libev | cut -d' ' -f2)
-        get_latest_version
-        latest_ver=$(echo "${ver}" | sed -e 's/^[a-zA-Z]//g')
-        if [ "${latest_ver}" == "${installed_ver}" ]; then
-            return 0
-        else
-            return 1
-        fi
-    else
-        return 2
-    fi
-}
+# check_version(){
+#     check_installed "ss-server"
+#     if [ $? -eq 0 ]; then
+#         installed_ver=$(ss-server -h | grep shadowsocks-libev | cut -d' ' -f2)
+#         get_latest_version
+#         latest_ver=$(echo "${ver}" | sed -e 's/^[a-zA-Z]//g')
+#         if [ "${latest_ver}" == "${installed_ver}" ]; then
+#             return 0
+#         else
+#             return 1
+#         fi
+#     else
+#         return 2
+#     fi
+# }
 
 check_new_ver(){
-	new_ver=$(wget -qO- https://api.github.com/repos/shadowsocks/shadowsocks-libev/releases| grep "tag_name"| head -n 1| awk -F ":" '{print $2}'| sed 's/\"//g;s/,//g;s/ //g')
-	[[ -z ${new_ver} ]] && echo -e "${Error} Shadowsocks 最新版本获取失败！" && exit 1
-	echo -e "${Info} 检测到 Shadowsocks 最新版本为 [ ${new_ver} ]"
+	new_ver=$(wget -qO- https://api.github.com/repos/shadowsocks/shadowsocks-libev/releases | jq -r '[.[] | select(.prerelease == false) | select(.draft == false) | .tag_name] | .[0]')
+	[[ -z ${new_ver} ]] && echo -e "${Error} Shadowsocks-libev 最新版本获取失败！" && exit 1
+	echo -e "${Info} 检测到 Shadowsocks-libev 最新版本为 [ ${new_ver} ]"
 }
 
 check_ver_comparison(){
 	now_ver=$(cat ${Now_ver_File})
 	if [[ "${now_ver}" != "${new_ver}" ]]; then
-		echo -e "${Info} 发现 Shadowsocks 已有新版本 [ ${new_ver} ]，旧版本 [ ${now_ver} ]"
+		echo -e "${Info} 发现 Shadowsocks-libev 已有新版本 [ ${new_ver} ]，旧版本 [ ${now_ver} ]"
 		read -e -p "是否更新 ? [Y/n] :" yn
 		[[ -z "${yn}" ]] && yn="y"
 		if [[ $yn == [Yy] ]]; then
-			check_pid
-			[[ ! -z $PID ]] && kill -9 ${PID}
+			check_status
+			[[ "$status" == "running" ]] && systemctl stop shadowsocks-libev
 			\cp "${CONF}" "/tmp/config.json"
 			rm -rf ${FOLDER}
 			Pre_install
@@ -134,7 +134,7 @@ check_ver_comparison(){
 			Start
 		fi
 	else
-		echo -e "${Info} 当前 Shadowsocks 已是最新版本 [ ${new_ver} ]" && exit 1
+		echo -e "${Info} 当前 Shadowsocks-libev 已是最新版本 [ ${new_ver} ]" && exit 1
 	fi
 }
 
@@ -164,7 +164,7 @@ Pre_install(){
 Service(){
 	echo '
 [Unit]
-Description= Shadowsocks Service
+Description= Shadowsocks libev Service
 After=network-online.target
 Wants=network-online.target systemd-networkd-wait-online.service
 [Service]
@@ -177,7 +177,7 @@ ExecStart=/usr/local/bin/ss-server -c /etc/shadowsocks-libev/config.json
 [Install]
 WantedBy=multi-user.target' > /etc/systemd/system/shadowsocks-libev.service
 systemctl enable --now shadowsocks-libev
-	echo -e "${Info} Shadowsocks 服务配置完成 !"
+	echo -e "${Info} Shadowsocks-libev 服务配置完成 !"
 }
 
 Installation_dependency(){
@@ -208,7 +208,7 @@ EOF
 }
 
 Read_config(){
-	[[ ! -e ${CONF} ]] && echo -e "${Error} Shadowsocks 配置文件不存在 !" && exit 1
+	[[ ! -e ${CONF} ]] && echo -e "${Error} Shadowsocks-libev 配置文件不存在 !" && exit 1
 	port=$(cat ${CONF}|jq -r '.server_port')
 	password=$(cat ${CONF}|jq -r '.password')
 	cipher=$(cat ${CONF}|jq -r '.method')
@@ -219,7 +219,7 @@ Set_port(){
 	while true
 		do
 		echo -e "${Tip} 本步骤不涉及系统防火墙端口操作，请手动放行相应端口！"
-		echo -e "请输入 Shadowsocks 端口 [1-65535]"
+		echo -e "请输入 Shadowsocks-libev 端口 [1-65535]"
 		read -e -p "(默认: 2525):" port
 		[[ -z "${port}" ]] && port="2525"
 		echo $((${port}+0)) &>/dev/null
@@ -256,7 +256,7 @@ ${Green_font_prefix} 1.${Font_color_suffix} 开启  ${Green_font_prefix} 2.${Fon
 }
 
 Set_password(){
-	echo "请输入 Shadowsocks 密码 [0-9][a-z][A-Z]"
+	echo "请输入 Shadowsocks-libev 密码 [0-9][a-z][A-Z]"
 	read -e -p "(默认: 随机生成):" password
 	[[ -z "${password}" ]] && password=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 	echo && echo "=================================="
@@ -265,7 +265,7 @@ Set_password(){
 }
 
 Set_cipher(){
-	echo -e "请选择 Shadowsocks 加密方式
+	echo -e "请选择 Shadowsocks-libev 加密方式
 ==================================	
  ${Green_font_prefix} 1.${Font_color_suffix} chacha20-ietf-poly1305 ${Green_font_prefix}(推荐)${Font_color_suffix}
  ${Green_font_prefix} 2.${Font_color_suffix} aes-128-gcm ${Green_font_prefix}(推荐)${Font_color_suffix}
@@ -373,7 +373,7 @@ Set(){
 }
 
 Install(){
-	[[ -e ${FILE} ]] && echo -e "${Error} 检测到 Shadowsocks 已安装 !" && exit 1
+	[[ -e ${FILE} ]] && echo -e "${Error} 检测到 Shadowsocks-libev 已安装 !" && exit 1
 	echo -e "${Info} 开始设置 配置..."
 	Set_port
 	Set_password
@@ -434,19 +434,19 @@ Uninstall(){
 
 Start(){
 	check_installed_status
-	check_pid
-	[[ ! -z ${PID} ]] && echo -e "${Info} Shadowsocks 已在运行 !" && exit 1
+	check_status
+	[[ "$status" == "running" ]] && echo -e "${Info} Shadowsocks-libev 已在运行 !" && exit 1
 	systemctl start shadowsocks-libev
-	check_pid
-	[[ ! -z ${PID} ]] && echo -e "${Info} Shadowsocks 启动成功 !"
+	check_status
+	[[ "$status" == "running" ]] && echo -e "${Info} Shadowsocks-libev 启动成功 !"
     sleep 3s
     Start_Menu
 }
 
 Stop(){
 	check_installed_status
-	check_pid
-	[[ -z ${PID} ]] && echo -e "${Error} Shadowsocks 没有运行，请检查 !" && exit 1
+	check_status
+	[[ !"$status" == "running"} ]] && echo -e "${Error} Shadowsocks-libev 没有运行，请检查 !" && exit 1
 	systemctl stop shadowsocks-libev
     sleep 3s
     Start_Menu
@@ -454,12 +454,8 @@ Stop(){
 
 Restart(){
 	check_installed_status
-	check_pid
-	[[ ! -z ${PID} ]] && systemctl stop shadowsocks-libev
 	systemctl restart shadowsocks-libev
-	check_pid
-	[[ ! -z ${PID} ]]
-	echo -e "${Info} Shadowsocks 重启完毕!"
+	echo -e "${Info} Shadowsocks-libev 重启完毕!"
 	sleep 3s
 	View
     Start_Menu
@@ -469,7 +465,7 @@ Update(){
 	check_installed_status
 	check_new_ver
 	check_ver_comparison
-	echo -e "${Info} Shadowsocks 更新完毕 !"
+	echo -e "${Info} Shadowsocks-libev 更新完毕 !"
     sleep 3s
     Start_Menu
 }
@@ -520,7 +516,7 @@ View(){
 	getipv6
 	Link_QR
 	clear && echo
-	echo -e "Shadowsocks 配置："
+	echo -e "Shadowsocks-libev 配置："
 	echo -e "——————————————————————————————————"
 	[[ "${ipv4}" != "IPv4_Error" ]] && echo -e " 地址\t: ${Green_font_prefix}${ipv4}${Font_color_suffix}"
 	[[ "${ipv6}" != "IPv6_Error" ]] && echo -e " 地址\t: ${Green_font_prefix}${ipv6}${Font_color_suffix}"
@@ -535,7 +531,7 @@ View(){
 }
 
 Status(){
-	echo -e "${Info} 获取 Shadowsocks 活动日志 ……"
+	echo -e "${Info} 获取 Shadowsocks-libev 活动日志 ……"
 	echo -e "${Tip} 返回主菜单请按 q ！"
 	systemctl status shadowsocks-libev
 	# Start_Menu
@@ -550,7 +546,7 @@ Update_Shell(){
 		read -p "(默认: y):" yn
 		[[ -z "${yn}" ]] && yn="y"
 		if [[ ${yn} == [Yy] ]]; then
-			wget -O shadowsocks-libev.sh --no-check-certificate https://raw.githubusercontent.com/xOS/Shadowsocks-libev/master/shadowsocks-libev.sh && chmod +x shadowsocks-libev.sh
+			wget -ON shadowsocks-libev.sh --no-check-certificate https://raw.githubusercontent.com/xOS/Shadowsocks-libev/master/shadowsocks-libev.sh && chmod +x shadowsocks-libev.sh
 			echo -e "脚本已更新为最新版本[ ${sh_new_ver} ] !"
 			echo -e "3s后执行新脚本"
             sleep 3s
@@ -605,8 +601,8 @@ Shadowsocks-libev 管理脚本 ${Red_font_prefix}[v${sh_ver}]${Font_color_suffix
  ${Green_font_prefix} 10.${Font_color_suffix} 退出脚本
 ==================================" && echo
 	if [[ -e ${FILE} ]]; then
-		check_pid
-		if [[ ! -z "${PID}" ]]; then
+		check_status
+		if [[ "$status" == "running" ]]; then
 			echo -e " 当前状态: ${Green_font_prefix}已安装${Font_color_suffix} 并 ${Green_font_prefix}已启动${Font_color_suffix}"
 		else
 			echo -e " 当前状态: ${Green_font_prefix}已安装${Font_color_suffix} 但 ${Red_font_prefix}未启动${Font_color_suffix}"
