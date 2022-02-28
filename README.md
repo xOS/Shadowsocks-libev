@@ -2,5 +2,5 @@
 > 仅自用
 ## 使用
 ```bash
-wget -O shadowsocks-libev.sh --no-check-certificate https://raw.githubusercontent.com/xOS/Shadowsocks-libev/master/shadowsocks-libev.sh && chmod +x shadowsocks-libev.sh && ./shadowsocks-libev.sh
+wget -O ss-libev.sh --no-check-certificate https://raw.githubusercontent.com/xOS/Shadowsocks-libev/master/shadowsocks-libev.sh && chmod +x ss-libev.sh && ./ss-libev.sh
 ```
