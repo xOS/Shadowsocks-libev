@@ -9,13 +9,14 @@ export PATH
 #	WebSite: https://www.nange.cn
 #=================================================
 
-sh_ver="1.1.2"
+sh_ver="1.2.2"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
 FILE="/usr/local/bin/ss-server"
 CONF="/etc/shadowsocks-libev/config.json"
 Now_ver_File="/etc/shadowsocks-libev/ver.txt"
+Local="/etc/sysctl.d/local.conf"
 
 libsodium_file="libsodium-1.0.18"
 libsodium_url="https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz"
@@ -79,6 +80,37 @@ check_sys(){
 	elif cat /proc/version | grep -q -E -i "centos|red hat|redhat"; then
 		release="centos"
     fi
+}
+
+#开启系统 TCP Fast Open
+enable_systfo() {
+	kernel=$(uname -r | awk -F . '{print $1}')
+	if [ "$kernel" -ge 3 ] ; then
+		echo 3 >/proc/sys/net/ipv4/tcp_fastopen
+		echo "net.ipv4.tcp_fastopen=3" >>/etc/sysctl.conf && sysctl -p >/dev/null 2>&1
+		[[ ! -e ${Local} ]] && echo "fs.file-max = 51200
+net.core.rmem_max = 67108864
+net.core.wmem_max = 67108864
+net.core.rmem_default = 65536
+net.core.wmem_default = 65536
+net.core.netdev_max_backlog = 4096
+net.core.somaxconn = 4096
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_tw_recycle = 0
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 1200
+net.ipv4.ip_local_port_range = 10000 65000
+net.ipv4.tcp_max_syn_backlog = 4096
+net.ipv4.tcp_max_tw_buckets = 5000
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_rmem = 4096 87380 67108864
+net.ipv4.tcp_wmem = 4096 65536 67108864
+net.ipv4.tcp_mtu_probing = 1
+net.ipv4.tcp_congestion_control = bbr" >>/etc/sysctl.d/local.conf && sysctl --system >/dev/null 2>&1
+	else
+		echo -e "${Error}系统内核版本过低，无法支持 TCP Fast Open ！"
+	fi
 }
 
 check_installed_status(){
@@ -173,6 +205,7 @@ Type=simple
 User=root
 Restart=on-failure
 RestartSec=5s
+ExecStartPre=/bin/sh -c 'ulimit -n 51200'
 ExecStart=/usr/local/bin/ss-server -c /etc/shadowsocks-libev/config.json
 [Install]
 WantedBy=multi-user.target' > /etc/systemd/system/shadowsocks-libev.service
@@ -247,6 +280,7 @@ ${Green_font_prefix} 1.${Font_color_suffix} 开启  ${Green_font_prefix} 2.${Fon
 	[[ -z "${tfo}" ]] && tfo="1"
 	if [[ ${tfo} == "1" ]]; then
 		tfo=true
+		enable_systfo
 	else
 		tfo=false
 	fi
