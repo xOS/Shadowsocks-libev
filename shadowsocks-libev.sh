@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://www.nange.cn
 #=================================================
 
-sh_ver="1.2.4"
+sh_ver="1.2.5"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -112,6 +112,7 @@ net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_rmem = 4096 87380 67108864
 net.ipv4.tcp_wmem = 4096 65536 67108864
 net.ipv4.tcp_mtu_probing = 1
+net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control = bbr" >>/etc/sysctl.d/local.conf && sysctl --system >/dev/null 2>&1
 	else
 		echo -e "$Error系统内核版本过低，无法支持 TCP Fast Open ！"
@@ -132,22 +133,6 @@ get_latest_version(){
     shadowsocks_libev_ver="shadowsocks-libev-$(echo "${ver}" | sed -e 's/^[a-zA-Z]//g')"
     download_link="https://github.com/shadowsocks/shadowsocks-libev/releases/download/${ver}/${shadowsocks_libev_ver}.tar.gz"
 }
-
-# check_version(){
-#     check_installed "ss-server"
-#     if [ $? -eq 0 ]; then
-#         installed_ver=$(ss-server -h | grep shadowsocks-libev | cut -d' ' -f2)
-#         get_latest_version
-#         latest_ver=$(echo "${ver}" | sed -e 's/^[a-zA-Z]//g')
-#         if [ "${latest_ver}" == "${installed_ver}" ]; then
-#             return 0
-#         else
-#             return 1
-#         fi
-#     else
-#         return 2
-#     fi
-# }
 
 check_new_ver(){
 	new_ver=$(wget -qO- https://api.github.com/repos/shadowsocks/shadowsocks-libev/releases | jq -r '[.[] | select(.prerelease == false) | select(.draft == false) | .tag_name] | .[0]')
