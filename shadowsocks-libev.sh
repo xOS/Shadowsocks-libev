@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://www.nange.cn
 #=================================================
 
-sh_ver="1.2.6"
+sh_ver="1.2.7"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -142,7 +142,7 @@ check_ver_comparison(){
 		[[ -z "${yn}" ]] && yn="y"
 		if [[ $yn == [Yy] ]]; then
 			check_status
-			[[ "$status" == "running" ]] && systemctl stop shadowsocks-libev
+			# [[ "$status" == "running" ]] && systemctl stop shadowsocks-libev
 			\cp "${CONF}" "/tmp/config.json"
 			# rm -rf ${FOLDER}
 			Pre_install
