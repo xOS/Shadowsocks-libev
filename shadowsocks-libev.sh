@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://www.nange.cn
 #=================================================
 
-sh_ver="1.2.5"
+sh_ver="1.2.6"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -150,9 +150,9 @@ check_ver_comparison(){
 			check_status
 			[[ "$status" == "running" ]] && systemctl stop shadowsocks-libev
 			\cp "${CONF}" "/tmp/config.json"
-			rm -rf ${FOLDER}
+			# rm -rf ${FOLDER}
 			Pre_install
-			mv "/tmp/config.json" "${CONF}"
+			mv -f "/tmp/config.json" "${CONF}"
 			Start
 		fi
 	else
@@ -163,8 +163,8 @@ check_ver_comparison(){
 Pre_install(){
 	if [[ ! -e "${FOLDER}" ]]; then
 		mkdir "${FOLDER}"
-	else
-		[[ -e "${FILE}" ]] && rm -rf "${FILE}"
+	# else
+		# [[ -e "${FILE}" ]] && rm -rf "${FILE}"
 	fi
 	echo -e "${Info} 开始编译安装 Shadowsocks-libev……"
     install_libsodium
