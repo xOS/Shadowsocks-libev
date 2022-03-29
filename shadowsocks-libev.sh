@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://www.nange.cn
 #=================================================
 
-sh_ver="1.2.7"
+sh_ver="1.2.8"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/shadowsocks-libev"
@@ -483,6 +483,7 @@ Update(){
 	check_installed_status
 	check_new_ver
 	check_ver_comparison
+	systemctl restart shadowsocks-libev
 	echo -e "${Info} Shadowsocks-libev 更新完毕 !"
     sleep 3s
     Start_Menu
