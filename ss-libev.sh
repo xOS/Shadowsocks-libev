@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://qste.com
 #=================================================
 
-sh_ver="1.4.0"
+sh_ver="1.4.1"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/ss-libev"
@@ -21,8 +21,8 @@ Local="/etc/sysctl.d/local.conf"
 libsodium_file="libsodium-1.0.18"
 libsodium_url="https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz"
 
-mbedtls_file='mbedtls-2.16.6'
-mbedtls_url='https://tls.mbed.org/download/'"$mbedtls_file"'-apache.tgz'
+mbedtls_file='mbedtls-2.28.0'
+mbedtls_url='https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v2.28.0.tar.gz'
 
 Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m" && Yellow_font_prefix="\033[0;33m"
 Info="${Green_font_prefix}[信息]${Font_color_suffix}"
@@ -46,8 +46,8 @@ install_libsodium() {
 
 install_mbedtls() {
     if [ ! -f /usr/lib/libmbedtls.a ]; then
-		wget --no-check-certificate -cq -t3 -T60 -O "${mbedtls_file}-apache.tgz" "${mbedtls_url}"
-        tar -xzf "${mbedtls_file}"-apache.tgz
+		wget --no-check-certificate -cq -t3 -T60 -O "${mbedtls_file}.tar.gz" "${mbedtls_url}"
+        tar -xzf "${mbedtls_file}".tar.gz
         cd "${mbedtls_file}" || exit
         make SHARED=1 CFLAGS=-fPIC
         make DESTDIR=/usr install
