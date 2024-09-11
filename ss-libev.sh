@@ -6,10 +6,10 @@ export PATH
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev 管理脚本
 #	Author: 翠花
-#	WebSite: https://qste.com
+#	WebSite: https://about.nange.cn
 #=================================================
 
-sh_ver="1.4.1"
+sh_ver="1.4.2"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/ss-libev"
@@ -200,9 +200,12 @@ systemctl enable --now ss-libev
 
 Installation_dependency(){
 	if [[ ${release} == "centos" ]]; then
-		yum update && yum install epel-release -y && yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 c-ares-devel rng-tools -y
+		yum update
+		yum install epel-release -y
+		yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 c-ares-devel rng-tools -y
 	else
-		apt-get update && apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev libev-dev rng-tools -y
+		apt-get update
+		apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev libev-dev rng-tools -y
 	fi
 	HRNGDEVICE=/dev/urandom
 	rngd -r /dev/urandom
