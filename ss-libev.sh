@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://aapls.com
 #=================================================
 
-sh_ver="1.4.3"
+sh_ver="1.4.4"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/ss-libev"
@@ -152,7 +152,7 @@ check_ver_comparison(){
 			# rm -rf ${FOLDER}
 			pre_install
 			mv -f "/tmp/config.json" "${CONF}"
-			Restart
+			restart_ss
 		fi
 	else
 		echo -e "${Info} 当前 Shadowsocks-libev 已是最新版本 [ ${new_ver} ]" && exit 1
@@ -202,7 +202,7 @@ pre_install(){
 	rm -rf "${mbedtls_file}" "${mbedtls_file}".tar.gz
 }
 
-Service(){
+create_service(){
 	echo '
 [Unit]
 Description= Shadowsocks libev Service
@@ -239,7 +239,7 @@ install_dependencies(){
 	\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 }
 
-Write_config(){
+write_config(){
 	cat > ${CONF}<<-EOF
 {
     "server": ["0.0.0.0", "::1"],
@@ -255,7 +255,7 @@ Write_config(){
 EOF
 }
 
-Read_config(){
+read_config(){
 	[[ ! -e ${CONF} ]] && echo -e "${Error} Shadowsocks-libev 配置文件不存在 !" && exit 1
 	port=$(cat ${CONF}|jq -r '.server_port')
 	password=$(cat ${CONF}|jq -r '.password')
@@ -269,6 +269,7 @@ set_port(){
 		echo -e "${Tip} 本步骤不涉及系统防火墙端口操作，请手动放行相应端口！"
 		echo -e "请输入 Shadowsocks-libev 端口 [1-65535]"
 		read -e -p "(默认: 2525):" port
+		[[ "${port}" == "q" || "${port}" == "Q" ]] && return 1
 		[[ -z "${port}" ]] && port="2525"
 		echo $((${port}+0)) &>/dev/null
 		if [[ $? -eq 0 ]]; then
@@ -292,6 +293,7 @@ set_tfo(){
 ${Green_font_prefix} 1.${Font_color_suffix} 开启  ${Green_font_prefix} 2.${Font_color_suffix} 关闭
 =================================="
 	read -e -p "(默认：1.开启)：" tfo
+	[[ "${tfo}" == "q" || "${tfo}" == "Q" ]] && return 1
 	[[ -z "${tfo}" ]] && tfo="1"
 	if [[ ${tfo} == "1" ]]; then
 		tfo=true
@@ -307,6 +309,7 @@ ${Green_font_prefix} 1.${Font_color_suffix} 开启  ${Green_font_prefix} 2.${Fon
 set_password(){
 	echo "请输入 Shadowsocks-libev 密码 [0-9][a-z][A-Z]"
 	read -e -p "(默认: 随机生成):" password
+	[[ "${password}" == "q" || "${password}" == "Q" ]] && return 1
 	[[ -z "${password}" ]] && password=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 	echo && echo "=================================="
 	echo -e "	密码 : ${Red_background_prefix} ${password} ${Font_color_suffix}"
@@ -323,6 +326,7 @@ set_cipher(){
 ==================================
  ${Tip} 建议优先使用 AEAD 算法，避免使用 plain/none/cfb 等旧算法。" && echo
 	read -e -p "(默认: 1. aes-256-gcm):" cipher_opt
+	[[ "${cipher_opt}" == "q" || "${cipher_opt}" == "Q" ]] && return 1
 	[[ -z "${cipher_opt}" ]] && cipher_opt="1"
 	if [[ ${cipher_opt} == "1" ]]; then
 		cipher="aes-256-gcm"
@@ -332,6 +336,7 @@ set_cipher(){
 		cipher="aes-128-gcm"
 	elif [[ ${cipher_opt} == "4" ]]; then
 		read -e -p "请输入加密方式(如 chacha20-ietf-poly1305):" cipher
+		[[ "${cipher}" == "q" || "${cipher}" == "Q" ]] && return 1
 		[[ -z "${cipher}" ]] && cipher="aes-256-gcm"
 	else
 		cipher="aes-256-gcm"
@@ -341,7 +346,7 @@ set_cipher(){
 	echo "==================================" && echo
 }
 
-Set(){
+set_config(){
 	check_installed_status
 	echo && echo -e "你要做什么？
 ——————————————————————————————————
@@ -352,73 +357,79 @@ Set(){
 ——————————————————————————————————
  ${Green_font_prefix}5.${Font_color_suffix}  修改 全部配置" && echo
 	read -e -p "(默认: 取消):" modify
-	[[ -z "${modify}" ]] && echo "已取消..." && exit 1
+	if [[ -z "${modify}" || "${modify}" == "q" || "${modify}" == "Q" ]]; then
+		echo "已取消..."
+		start_menu
+		return
+	fi
 	if [[ "${modify}" == "1" ]]; then
-		Read_config
-		set_port
+			read_config
+		set_port || { echo "已返回上一级菜单"; start_menu; return; }
 		password=${password}
 		cipher=${cipher}
 		tfo=${tfo}
-		Write_config
-		Restart
+			write_config
+			restart_ss
 	elif [[ "${modify}" == "2" ]]; then
-		Read_config
-		set_password
+			read_config
+		set_password || { echo "已返回上一级菜单"; start_menu; return; }
 		port=${port}
 		cipher=${cipher}
 		tfo=${tfo}
-		Write_config
-		Restart
+			write_config
+			restart_ss
 	elif [[ "${modify}" == "3" ]]; then
-		Read_config
-		set_cipher
+			read_config
+		set_cipher || { echo "已返回上一级菜单"; start_menu; return; }
 		port=${port}
 		password=${password}
 		tfo=${tfo}
-		Write_config
-		Restart
+			write_config
+			restart_ss
 	elif [[ "${modify}" == "4" ]]; then
-		Read_config
-		set_tfo
+			read_config
+		set_tfo || { echo "已返回上一级菜单"; start_menu; return; }
 		cipher=${cipher}
 		port=${port}
 		password=${password}
-		Write_config
-		Restart
+			write_config
+			restart_ss
 	elif [[ "${modify}" == "5" ]]; then
-		Read_config
-		set_port
-		set_password
-		set_cipher
-		set_tfo
-		Write_config
-		Restart
+			read_config
+		set_port || { echo "已返回上一级菜单"; start_menu; return; }
+		set_password || { echo "已返回上一级菜单"; start_menu; return; }
+		set_cipher || { echo "已返回上一级菜单"; start_menu; return; }
+		set_tfo || { echo "已返回上一级菜单"; start_menu; return; }
+			write_config
+			restart_ss
 	else
-		echo -e "${Error} 请输入正确的数字(1-5)" && exit 1
+		echo -e "${Error} 请输入正确的数字(1-5)"
+		start_menu
+		return
 	fi
 }
 
-Install(){
+install_ss(){
 	[[ -e ${FILE} ]] && echo -e "${Error} 检测到 Shadowsocks-libev 已安装 !" && exit 1
 	echo -e "${Info} 开始设置 配置..."
-	set_port
-	set_password
-	set_cipher
-	set_tfo
+	set_port || { echo "已返回上一级菜单"; start_menu; return; }
+	set_password || { echo "已返回上一级菜单"; start_menu; return; }
+	set_cipher || { echo "已返回上一级菜单"; start_menu; return; }
+	set_tfo || { echo "已返回上一级菜单"; start_menu; return; }
 	echo -e "${Info} 开始安装/配置 依赖..."
 	install_dependencies
 	echo -e "${Info} 开始下载/安装..."
 	check_new_ver
 	pre_install
 	echo -e "${Info} 开始安装系统服务脚本..."
-	Service
+	create_service
 	echo -e "${Info} 开始写入 配置文件..."
-	Write_config
+	write_config
 	echo -e "${Info} 所有步骤 安装完毕，开始启动..."
-	Start
+	start_ss
 }
 
-Uninstall(){
+uninstall_ss(){
     clear
     printf "确认要卸载 Shadowsocks-libev 么？ (y/n)"
     printf "\n"
@@ -458,10 +469,10 @@ Uninstall(){
         echo
     fi
     sleep 3s
-    Start_Menu
+	start_menu
 }
 
-Start(){
+start_ss(){
 	check_installed_status
 	check_status
 	[[ "$status" == "running" ]] && echo -e "${Info} Shadowsocks-libev 已在运行 !" && exit 1
@@ -469,37 +480,37 @@ Start(){
 	check_status
 	[[ "$status" == "running" ]] && echo -e "${Info} Shadowsocks-libev 启动成功 !"
     sleep 3s
-    Start_Menu
+    start_menu
 }
 
-Stop(){
+stop_ss(){
 	check_installed_status
 	check_status
 	[[ "$status" != "running" ]] && echo -e "${Error} Shadowsocks-libev 没有运行，请检查 !" && exit 1
 	systemctl stop ss-libev
     sleep 3s
-    Start_Menu
+    start_menu
 }
 
-Restart(){
+restart_ss(){
 	check_installed_status
 	systemctl restart ss-libev
 	echo -e "${Info} Shadowsocks-libev 重启完毕!"
 	sleep 3s
-	View
-    Start_Menu
+	view_config
+    start_menu
 }
 
-Update(){
+update_ss(){
 	check_installed_status
 	check_new_ver
 	check_ver_comparison
 	echo -e "${Info} Shadowsocks-libev 更新完毕 !"
     sleep 3s
-    Start_Menu
+    start_menu
 }
 
-getipv4(){
+get_ipv4(){
 	ipv4=$(wget -qO- -4 -t1 -T2 ipinfo.io/ip)
 	if [[ -z "${ipv4}" ]]; then
 		ipv4=$(wget -qO- -4 -t1 -T2 api.ip.sb/ip)
@@ -511,7 +522,7 @@ getipv4(){
 		fi
 	fi
 }
-getipv6(){
+get_ipv6(){
 	ipv6=$(wget -qO- -6 -t1 -T2 ifconfig.co)
 	if [[ -z "${ipv6}" ]]; then
 		ipv6="IPv6_Error"
@@ -523,7 +534,7 @@ urlsafe_base64(){
 	echo -e "${date}"
 }
 
-Link_QR(){
+build_share_links(){
 	if [[ "${ipv4}" != "IPv4_Error" ]]; then
 		SSbase64=$(urlsafe_base64 "${cipher}:${password}@${ipv4}:${port}")
 		SSurl="ss://${SSbase64}"
@@ -538,12 +549,12 @@ Link_QR(){
 	fi
 }
 
-View(){
+view_config(){
 	check_installed_status
-	Read_config
-	getipv4
-	getipv6
-	Link_QR
+	read_config
+	get_ipv4
+	get_ipv6
+	build_share_links
 	clear && echo
 	echo -e "Shadowsocks-libev 配置："
 	echo -e "——————————————————————————————————"
@@ -556,20 +567,20 @@ View(){
 	[[ ! -z "${link_ipv4}" ]] && echo -e "${link_ipv4}"
 	[[ ! -z "${link_ipv6}" ]] && echo -e "${link_ipv6}"
 	echo -e "——————————————————————————————————"
-	Before_Start_Menu
+	before_start_menu
 }
 
-Status(){
+show_status(){
 	echo -e "${Info} 获取 Shadowsocks-libev 活动日志 ……"
 	echo -e "${Tip} 返回主菜单请按 q ！"
 	systemctl status ss-libev
-	# Start_Menu
+	# start_menu
 }
 
-Update_Shell(){
+update_script(){
 	echo -e "当前版本为 [ ${sh_ver} ]，开始检测最新版本..."
 	sh_new_ver=$(wget --no-check-certificate -qO- "https://raw.githubusercontent.com/xOS/Shadowsocks-libev/master/ss-libev.sh"|grep 'sh_ver="'|awk -F "=" '{print $NF}'|sed 's/\"//g'|head -1)
-	[[ -z ${sh_new_ver} ]] && echo -e "${Error} 检测最新版本失败 !" && Start_Menu
+	[[ -z ${sh_new_ver} ]] && echo -e "${Error} 检测最新版本失败 !" && start_menu
 	if [[ ${sh_new_ver} != ${sh_ver} ]]; then
 		echo -e "发现新版本[ ${sh_new_ver} ]，是否更新？[Y/n]"
 		read -p "(默认: y):" yn
@@ -583,23 +594,23 @@ Update_Shell(){
 		else
 			echo && echo "	已取消..." && echo
             sleep 3s
-            Start_Menu
+            start_menu
 		fi
 	else
 		echo -e "当前已是最新版本[ ${sh_new_ver} ] !"
 		sleep 3s
-        Start_Menu
+        start_menu
 	fi
 	sleep 3s
     	bash ss-libev.sh
 }
 
-Before_Start_Menu() {
+before_start_menu() {
     echo && echo -n -e "${yellow}* 按回车返回主菜单 *${plain}" && read temp
-    Start_Menu
+    start_menu
 }
 
-Start_Menu(){
+start_menu(){
 clear
 check_root
 check_sys
@@ -623,7 +634,7 @@ Shadowsocks-libev 管理脚本 ${Red_font_prefix}[v${sh_ver}]${Font_color_suffix
  ${Green_font_prefix} 8.${Font_color_suffix} 查看 配置信息
  ${Green_font_prefix} 9.${Font_color_suffix} 查看 运行状态
 ——————————————————————————————————
- ${Green_font_prefix} 10.${Font_color_suffix} 退出脚本
+ ${Green_font_prefix} 00.${Font_color_suffix} 退出脚本
 ==================================" && echo
 	if [[ -e ${FILE} ]]; then
 		check_status
@@ -636,44 +647,48 @@ Shadowsocks-libev 管理脚本 ${Red_font_prefix}[v${sh_ver}]${Font_color_suffix
 		echo -e " 当前状态: ${Red_font_prefix}未安装${Font_color_suffix}"
 	fi
 	echo
-	read -e -p " 请输入数字 [0-10]:" num
+	read -e -p " 请输入数字 [0-9/00]:" num
 	case "$num" in
+		q|Q)
+		start_menu
+		;;
 		0)
-		Update_Shell
+		update_script
 		;;
 		1)
-		Install
+		install_ss
 		;;
 		2)
-		Update
+		update_ss
 		;;
 		3)
-		Uninstall
+		uninstall_ss
 		;;
 		4)
-		Start
+		start_ss
 		;;
 		5)
-		Stop
+		stop_ss
 		;;
 		6)
-		Restart
+		restart_ss
 		;;
 		7)
-		Set
+		set_config
 		;;
 		8)
-		View
+		view_config
 		;;
 		9)
-		Status
+		show_status
 		;;
-		10)
-		exit 1
+		00)
+		exit 0
 		;;
 		*)
-		echo "请输入正确数字 [0-10]"
+		echo "请输入正确数字 [0-9/00]"
+		start_menu
 		;;
 	esac
 }
-Start_Menu
+start_menu
