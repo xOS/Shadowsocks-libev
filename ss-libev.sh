@@ -6,14 +6,14 @@ export PATH
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: Shadowsocks libev 管理脚本
 #	Author: 翠花
-#	WebSite: https://about.nange.cn
+#	WebSite: https://aapls.com
 #=================================================
 
-sh_ver="1.4.2"
+sh_ver="1.4.3"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/ss-libev"
-FILE="/usr/local/bin/ss-libev"
+FILE="/usr/local/bin/ss-server"
 CONF="/etc/ss-libev/config.json"
 Now_ver_File="/etc/ss-libev/ver.txt"
 Local="/etc/sysctl.d/local.conf"
@@ -32,9 +32,11 @@ Tip="${Yellow_font_prefix}[注意]${Font_color_suffix}"
 install_libsodium() {
     if [ ! -f /usr/lib/libsodium.a ]; then
 		wget --no-check-certificate -cq -t3 -T60 -O "${libsodium_file}.tar.gz" "${libsodium_url}"
-        tar -xzf ${libsodium_file}.tar.gz
-        cd ${libsodium_file} || exit
-        ./configure --prefix=/usr && make && make install
+		tar -xzf "${libsodium_file}.tar.gz"
+		(
+			cd "${libsodium_file}" || exit 1
+			./configure --prefix=/usr && make && make install
+		)
         if [ $? -ne 0 ]; then
             echo -e "${Error} ${libsodium_file} 安装失败！"
             exit 1
@@ -48,9 +50,11 @@ install_mbedtls() {
     if [ ! -f /usr/lib/libmbedtls.a ]; then
 		wget --no-check-certificate -cq -t3 -T60 -O "${mbedtls_file}.tar.gz" "${mbedtls_url}"
         tar -xzf "${mbedtls_file}".tar.gz
-        cd "${mbedtls_file}" || exit
-        make SHARED=1 CFLAGS=-fPIC
-        make DESTDIR=/usr install
+		(
+			cd "${mbedtls_file}" || exit 1
+			make SHARED=1 CFLAGS=-fPIC
+			make DESTDIR=/usr install
+		)
         if [ $? -ne 0 ]; then
             echo -e "${Error} ${mbedtls_file} 安装失败！"
             exit 1
@@ -146,7 +150,7 @@ check_ver_comparison(){
 			# [[ "$status" == "running" ]] && systemctl stop ss-libev
 			\cp "${CONF}" "/tmp/config.json"
 			# rm -rf ${FOLDER}
-			Pre_install
+			pre_install
 			mv -f "/tmp/config.json" "${CONF}"
 			Restart
 		fi
@@ -155,7 +159,7 @@ check_ver_comparison(){
 	fi
 }
 
-Pre_install(){
+pre_install(){
 	if [[ ! -e "${FOLDER}" ]]; then
 		mkdir "${FOLDER}"
 	# else
@@ -165,17 +169,37 @@ Pre_install(){
     install_libsodium
     install_mbedtls
     ldconfig
-	wget --no-check-certificate -cq -t3 -T60 -O "${shadowsocks_libev_ver}.tar.gz" "${download_link}"
-    tar -xzf "${shadowsocks_libev_ver}".tar.gz
-    cd "${shadowsocks_libev_ver}" || exit
-    ./configure --disable-documentation
-    make && make install
+	build_tag="${new_ver:-${ver}}"
+	build_dir="/root/${shadowsocks_libev_ver}"
+	rm -rf "${build_dir}" "/root/${shadowsocks_libev_ver}.tar.gz"
+	if git clone --recursive -b "${build_tag}" https://github.com/shadowsocks/shadowsocks-libev.git "${build_dir}"; then
+		echo -e "${Info} 使用上游源码仓库(含子模块)进行编译。"
+	else
+		echo -e "${Tip} Git 克隆失败，回退到发布包构建。"
+		wget --no-check-certificate -cq -t3 -T60 -O "/root/${shadowsocks_libev_ver}.tar.gz" "${download_link}" || { echo -e "${Error} 下载 Shadowsocks-libev 失败！"; exit 1; }
+		tar -xzf "/root/${shadowsocks_libev_ver}.tar.gz" -C /root || { echo -e "${Error} 解压 Shadowsocks-libev 失败！"; exit 1; }
+	fi
+	cd "${build_dir}" || exit 1
+	if [[ -f ./CMakeLists.txt ]]; then
+		mkdir -p build && cd build || exit 1
+		cmake -Wno-dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_STATIC=OFF -DWITH_EMBEDDED_SRC=ON .. && make -j"$(nproc 2>/dev/null || echo 1)" && make install
+	elif [[ -f ./configure ]] || [[ -f ./autogen.sh ]]; then
+		if [[ ! -f ./configure ]] && [[ -f ./autogen.sh ]]; then
+			sh ./autogen.sh
+		fi
+		[[ ! -f ./configure ]] && echo -e "${Error} 未找到 configure 脚本，无法编译！" && exit 1
+		sh ./configure --disable-documentation && make && make install
+	else
+		echo -e "${Error} 未找到可用构建脚本(CMakeLists.txt/configure/autogen.sh)！"
+		exit 1
+	fi
+	[[ $? -ne 0 ]] && echo -e "${Error} Shadowsocks-libev 编译安装失败！" && exit 1
     echo "${new_ver}" > ${Now_ver_File}
     echo -e "${Info} Shadowsocks-libev 主程序编译安装完毕！"
     cd /root || exit
-    rm -rf "${shadowsocks_libev_ver}" "${shadowsocks_libev_ver}".tar.gz
+	rm -rf "${shadowsocks_libev_ver}" "${shadowsocks_libev_ver}".tar.gz
     rm -rf ${libsodium_file} ${libsodium_file}.tar.gz
-    rm -rf "${mbedtls_file}" "${mbedtls_file}"-apache.tgz
+	rm -rf "${mbedtls_file}" "${mbedtls_file}".tar.gz
 }
 
 Service(){
@@ -190,7 +214,6 @@ Type=simple
 User=root
 Restart=on-failure
 RestartSec=5s
-ExecStartPre=/bin/sh -c 'ulimit -n 51200'
 ExecStart=/usr/local/bin/ss-server -c /etc/ss-libev/config.json
 [Install]
 WantedBy=multi-user.target' > /etc/systemd/system/ss-libev.service
@@ -198,17 +221,21 @@ systemctl enable --now ss-libev
 	echo -e "${Info} Shadowsocks-libev 服务配置完成 !"
 }
 
-Installation_dependency(){
+install_dependencies(){
 	if [[ ${release} == "centos" ]]; then
 		yum update
 		yum install epel-release -y
-		yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip python2 c-ares-devel rng-tools -y
+		yum install gettext gcc autoconf libtool automake make asciidoc xmlto c-ares-devel libev-devel jq git unzip pkgconfig c-ares-devel rng-tools -y
 	else
 		apt-get update
-		apt-get install --no-install-recommends gettext build-essential autoconf libtool libpcre3-dev asciidoc xmlto libev-dev libc-ares-dev automake libmbedtls-dev libsodium-dev jq git unzip python2 libc-ares2 libc-ares-dev libev-dev rng-tools -y
+		apt-get install -y gettext build-essential autoconf libtool automake make cmake pkg-config
+		apt-get install -y libpcre2-dev asciidoc xmlto libev-dev libc-ares-dev libmbedtls-dev libsodium-dev jq git unzip libc-ares2 || true
+		apt-get install -y rng-tools-debian || apt-get install -y rng-tools || true
 	fi
 	HRNGDEVICE=/dev/urandom
-	rngd -r /dev/urandom
+	if command -v rngd >/dev/null 2>&1; then
+		pgrep -x rngd >/dev/null 2>&1 || rngd -r /dev/urandom >/dev/null 2>&1 || true
+	fi
 	\cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 }
 
@@ -236,7 +263,7 @@ Read_config(){
 	tfo=$(cat ${CONF}|jq -r '.fast_open')
 }
 
-Set_port(){
+set_port(){
 	while true
 		do
 		echo -e "${Tip} 本步骤不涉及系统防火墙端口操作，请手动放行相应端口！"
@@ -259,7 +286,7 @@ Set_port(){
 		done
 }
 
-Set_tfo(){
+set_tfo(){
 	echo -e "是否开启 TCP Fast Open ？
 ==================================
 ${Green_font_prefix} 1.${Font_color_suffix} 开启  ${Green_font_prefix} 2.${Font_color_suffix} 关闭
@@ -277,7 +304,7 @@ ${Green_font_prefix} 1.${Font_color_suffix} 开启  ${Green_font_prefix} 2.${Fon
 	echo "==================================" && echo
 }
 
-Set_password(){
+set_password(){
 	echo "请输入 Shadowsocks-libev 密码 [0-9][a-z][A-Z]"
 	read -e -p "(默认: 随机生成):" password
 	[[ -z "${password}" ]] && password=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
@@ -286,51 +313,28 @@ Set_password(){
 	echo "==================================" && echo
 }
 
-Set_cipher(){
+set_cipher(){
 	echo -e "请选择 Shadowsocks-libev 加密方式
-==================================	
- ${Green_font_prefix} 1.${Font_color_suffix} chacha20-ietf-poly1305 ${Green_font_prefix}(推荐)${Font_color_suffix}
- ${Green_font_prefix} 2.${Font_color_suffix} aes-128-gcm ${Green_font_prefix}(推荐)${Font_color_suffix}
- ${Green_font_prefix} 3.${Font_color_suffix} aes-256-gcm ${Green_font_prefix}(推荐)${Font_color_suffix}
- ${Green_font_prefix} 4.${Font_color_suffix} plain ${Red_font_prefix}(不推荐)${Font_color_suffix}
- ${Green_font_prefix} 5.${Font_color_suffix} none ${Red_font_prefix}(不推荐)${Font_color_suffix}
- ${Green_font_prefix} 6.${Font_color_suffix} table
- ${Green_font_prefix} 7.${Font_color_suffix} aes-128-cfb
- ${Green_font_prefix} 8.${Font_color_suffix} aes-256-cfb
- ${Green_font_prefix} 9.${Font_color_suffix} aes-256-ctr 
- ${Green_font_prefix}10.${Font_color_suffix} camellia-256-cfb
- ${Green_font_prefix}11.${Font_color_suffix} rc4-md5
- ${Green_font_prefix}12.${Font_color_suffix} chacha20-ietf
 ==================================
- ${Tip} 如需其它加密方式请手动修改配置文件 !" && echo
-	read -e -p "(默认: 1. chacha20-ietf-poly1305):" cipher
-	[[ -z "${cipher}" ]] && cipher="1"
-	if [[ ${cipher} == "1" ]]; then
-		cipher="chacha20-ietf-poly1305"
-	elif [[ ${cipher} == "2" ]]; then
-		cipher="aes-128-gcm"
-	elif [[ ${cipher} == "3" ]]; then
+ ${Green_font_prefix} 1.${Font_color_suffix} aes-256-gcm ${Green_font_prefix}(推荐)${Font_color_suffix}
+ ${Green_font_prefix} 2.${Font_color_suffix} chacha20-ietf-poly1305 ${Green_font_prefix}(推荐)${Font_color_suffix}
+ ${Green_font_prefix} 3.${Font_color_suffix} aes-128-gcm
+ ${Green_font_prefix} 4.${Font_color_suffix} 自定义输入
+==================================
+ ${Tip} 建议优先使用 AEAD 算法，避免使用 plain/none/cfb 等旧算法。" && echo
+	read -e -p "(默认: 1. aes-256-gcm):" cipher_opt
+	[[ -z "${cipher_opt}" ]] && cipher_opt="1"
+	if [[ ${cipher_opt} == "1" ]]; then
 		cipher="aes-256-gcm"
-	elif [[ ${cipher} == "4" ]]; then
-		cipher="plain"
-	elif [[ ${cipher} == "5" ]]; then
-		cipher="none"
-	elif [[ ${cipher} == "6" ]]; then
-		cipher="table"
-	elif [[ ${cipher} == "7" ]]; then
-		cipher="aes-128-cfb"
-	elif [[ ${cipher} == "8" ]]; then
-		cipher="aes-256-cfb"
-	elif [[ ${cipher} == "9" ]]; then
-		cipher="aes-256-ctr"
-	elif [[ ${cipher} == "10" ]]; then
-		cipher="camellia-256-cfb"
-	elif [[ ${cipher} == "11" ]]; then
-		cipher="arc4-md5"
-	elif [[ ${cipher} == "12" ]]; then
-		cipher="chacha20-ietf"
-	else
+	elif [[ ${cipher_opt} == "2" ]]; then
 		cipher="chacha20-ietf-poly1305"
+	elif [[ ${cipher_opt} == "3" ]]; then
+		cipher="aes-128-gcm"
+	elif [[ ${cipher_opt} == "4" ]]; then
+		read -e -p "请输入加密方式(如 chacha20-ietf-poly1305):" cipher
+		[[ -z "${cipher}" ]] && cipher="aes-256-gcm"
+	else
+		cipher="aes-256-gcm"
 	fi
 	echo && echo "=================================="
 	echo -e "	加密 : ${Red_background_prefix} ${cipher} ${Font_color_suffix}"
@@ -351,7 +355,7 @@ Set(){
 	[[ -z "${modify}" ]] && echo "已取消..." && exit 1
 	if [[ "${modify}" == "1" ]]; then
 		Read_config
-		Set_port
+		set_port
 		password=${password}
 		cipher=${cipher}
 		tfo=${tfo}
@@ -359,7 +363,7 @@ Set(){
 		Restart
 	elif [[ "${modify}" == "2" ]]; then
 		Read_config
-		Set_password
+		set_password
 		port=${port}
 		cipher=${cipher}
 		tfo=${tfo}
@@ -367,7 +371,7 @@ Set(){
 		Restart
 	elif [[ "${modify}" == "3" ]]; then
 		Read_config
-		Set_cipher
+		set_cipher
 		port=${port}
 		password=${password}
 		tfo=${tfo}
@@ -375,7 +379,7 @@ Set(){
 		Restart
 	elif [[ "${modify}" == "4" ]]; then
 		Read_config
-		Set_tfo
+		set_tfo
 		cipher=${cipher}
 		port=${port}
 		password=${password}
@@ -383,10 +387,10 @@ Set(){
 		Restart
 	elif [[ "${modify}" == "5" ]]; then
 		Read_config
-		Set_port
-		Set_password
-		Set_cipher
-		Set_tfo
+		set_port
+		set_password
+		set_cipher
+		set_tfo
 		Write_config
 		Restart
 	else
@@ -397,15 +401,15 @@ Set(){
 Install(){
 	[[ -e ${FILE} ]] && echo -e "${Error} 检测到 Shadowsocks-libev 已安装 !" && exit 1
 	echo -e "${Info} 开始设置 配置..."
-	Set_port
-	Set_password
-	Set_cipher
-	Set_tfo
+	set_port
+	set_password
+	set_cipher
+	set_tfo
 	echo -e "${Info} 开始安装/配置 依赖..."
-	Installation_dependency
+	install_dependencies
 	echo -e "${Info} 开始下载/安装..."
 	check_new_ver
-	Pre_install
+	pre_install
 	echo -e "${Info} 开始安装系统服务脚本..."
 	Service
 	echo -e "${Info} 开始写入 配置文件..."
@@ -428,10 +432,13 @@ Uninstall(){
         rm -fr /etc/ss-libev
         rm -f /usr/local/bin/ss-local
         rm -f /usr/local/bin/ss-tunnel
+		rm -f /usr/local/bin/ss-server
         rm -f /usr/local/bin/ss-libev
         rm -f /usr/local/bin/ss-manager
         rm -f /usr/local/bin/ss-redir
         rm -f /usr/local/bin/ss-nat
+		rm -f /etc/systemd/system/ss-libev.service
+		systemctl daemon-reload
         rm -f /usr/local/lib/libshadowsocks-libev.a
         rm -f /usr/local/lib/libshadowsocks-libev.la
         rm -f /usr/local/include/shadowsocks.h
@@ -468,7 +475,7 @@ Start(){
 Stop(){
 	check_installed_status
 	check_status
-	[[ !"$status" == "running"} ]] && echo -e "${Error} Shadowsocks-libev 没有运行，请检查 !" && exit 1
+	[[ "$status" != "running" ]] && echo -e "${Error} Shadowsocks-libev 没有运行，请检查 !" && exit 1
 	systemctl stop ss-libev
     sleep 3s
     Start_Menu
