@@ -9,7 +9,7 @@ export PATH
 #	WebSite: https://aapls.com
 #=================================================
 
-sh_ver="1.4.4"
+sh_ver="1.4.5"
 filepath=$(cd "$(dirname "$0")"; pwd)
 file_1=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
 FOLDER="/etc/ss-libev"
@@ -648,6 +648,11 @@ Shadowsocks-libev 管理脚本 ${Red_font_prefix}[v${sh_ver}]${Font_color_suffix
 	fi
 	echo
 	read -e -p " 请输入数字 [0-9/00]:" num
+	# Normalize accidental quoted input like "00" or “00”.
+	num="${num//\"/}"
+	num="${num//“/}"
+	num="${num//”/}"
+	num="${num// /}"
 	case "$num" in
 		q|Q)
 		start_menu
